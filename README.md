@@ -1,3 +1,3 @@
-# Natural language processing course: `Put name of your project here`
+# Natural language processing course: AIPravnik.si
 
-Please, organize README and the whole structure of the repository to be self-contained and reproducible.
+Conversational AI assistant tailored to Slovenian law.
