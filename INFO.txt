@@ -1,0 +1,244 @@
+# ARNES/SLURM navodila
+
+
+## 0. info
+
+The shared project folder is:
+  /d/hpc/projects/onj_fri/pad-siew/law-rag
+To je mapa v keri mamo kodo.
+
+The shared Hugging Face model cache is:
+  /d/hpc/projects/onj_fri/pad-siew/law-rag/hf-cache
+To je mapa v keri so modeli (GaMS).
+
+
+## 1. Login
+
+From your local machine (replace USERNAME with your ARNES username):
+  ssh -i ~/.ssh/id_ed25519_arnes USERNAME@hpc-login3.arnes.si
+
+
+## 2. Go to the shared project folder
+
+After login:
+  cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+  ls
+
+Expected folders/files in law-rag folder are:
+  scripts/
+  jobs/
+  logs/
+  data/
+  index/
+  hf-cache/
+  requirements.txt
+
+
+## 3. Create your private venv
+
+Run this once to setup:
+  cd ~
+  mkdir -p ~/law-rag
+  cd ~/law-rag
+
+  apptainer exec /d/hpc/singularity/pytorch-24.12-py3.sif \
+    python -m venv --system-site-packages venv
+
+Important:
+  --system-site-packages allows the venv to use PyTorch from the ARNES container.
+
+
+## 4. Install project dependencies
+
+Still in ~/law-rag:
+  apptainer exec \
+    --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+    --bind $HOME:$HOME \
+    --pwd $HOME/law-rag \
+    /d/hpc/singularity/pytorch-24.12-py3.sif \
+    ./venv/bin/pip install --upgrade pip
+
+Then install the project dependencies:
+  apptainer exec \
+    --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+    --bind $HOME:$HOME \
+    --pwd $HOME/law-rag \
+    /d/hpc/singularity/pytorch-24.12-py3.sif \
+    ./venv/bin/pip install -r /d/hpc/projects/onj_fri/pad-siew/law-rag/requirements.txt
+
+
+## 5. Verify the environment
+
+Run:
+  cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+
+  apptainer exec \
+    --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+    --bind $HOME:$HOME \
+    --pwd /d/hpc/projects/onj_fri/pad-siew/law-rag \
+    /d/hpc/singularity/pytorch-24.12-py3.sif \
+    $HOME/law-rag/venv/bin/python -c "import torch, transformers, sentence_transformers, faiss; print('OK'); print(torch.__version__); print(transformers.__version__)"
+
+Expected:
+  OK
+  2.6.0a0+df5bbc09d1.nv24.12 (torch version)
+  4.48.3
+
+
+## 6. How to run jobs with Slurm
+
+Never run heavy model code directly on the login node (login je samo entry point, da se gor povezes pa creatas/editas file).
+
+Use Slurm jobs from the shared project folder:
+  cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+
+Submit a job:
+  sbatch jobs/test_gams.sbatch
+
+Check your running jobs (this lists all jobs you currently have running):
+  squeue -u $USER
+
+Cancel a job (npr. scancel 67032173):
+  scancel JOBID
+
+Torej ce hoces uporabljati nek model (npr. GaMS), ki uporablja GPU (ker na CPU runna pocasi al pa sploh ne gre runnati), moras napisati .py skripto, ki uporablja ta model, nato pa napises .sbatch ki zalaufa ta .py program kot job. Vsak "job" ki ga zalaufas ima svoj JOBID. Ce uporabis "squeue -p gpu" ti izpise vse GPU-je v uporabi. Vcasih so vsi zasedeni in moras pocakati nekaj casa da se sprosti.
+	Primer:
+		[tv6421@hpc-login3 law-rag]$ squeue -p gpu
+			     JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+			  67035255       gpu  qwen3vl   pf9453 PD       0:00      1 (Priority)
+			  67035254       gpu  qwen3vl   pf9453 PD       0:00      1 (Priority)
+			  67035252       gpu  qwen3vl   pf9453 PD       0:00      1 (Resources)
+			  66672281       gpu IGFIQAV2  zbabnik PD       0:00      1 (Priority)
+			  66914134       gpu llama70b   gstrle PD       0:00      1 (Priority)
+			  67024943       gpu SNNResNe   dsluga PD       0:00      1 (Priority)
+			  67024942       gpu SNNResNe   dsluga PD       0:00      1 (Priority)
+			  67024940       gpu SNNResNe   dsluga PD       0:00      1 (Priority)
+			  67029696       gpu evl_B_gr lajevecd PD       0:00      1 (Dependency)
+			  67029665       gpu evl_A_ls lajevecd PD       0:00      1 (Dependency)
+		   67031423_[1-20]       gpu boltz_ar krajnikb PD       0:00      1 (Priority)
+		   67031422_[1-20]       gpu boltz_ar krajnikb PD       0:00      1 (Priority)
+		   67031357_[9-20]       gpu boltz_ar krajnikb PD       0:00      1 (Priority)
+			...
+
+Za primer sbatch skripte das "cat /d/hpc/projects/onj_fri/pad-siew/law-rag/jobs/debug_startup.sbatch"
+Da pogledas output sbatch skripte das npr. "cat logs/emb-test-67041129.out".
+
+
+## 7. Logs
+
+Slurm writes logs into:
+  logs/
+
+For example:
+  logs/gams-test-<JOBID>.out        npr. logs/gams-test-67032173.out
+  logs/gams-test-<JOBID>.err
+
+Check latest output:
+  tail -f $(ls -t logs/*.out | head -1)
+
+Check a specific job:
+  cat logs/gams-test-JOBID.out
+  cat logs/gams-test-JOBID.err
+
+
+## 8. Test GaMS model
+
+Run:
+  cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+  sbatch jobs/test_gams.sbatch
+
+Check status:
+  squeue -u $USER
+
+Check output:
+  tail -f $(ls -t logs/gams-test-*.out | head -1)
+
+This loads the GAMS model:
+  cjvt/GaMS-2B-Instruct
+
+The model can take several minutes to load from shared storage (pri meni je trajalo ~6min).
+On V100S 32GB, it used about 5 GB GPU memory.
+
+
+## 9. Test embeddings
+
+Run:
+  cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+  sbatch jobs/test_embeddings.sbatch
+
+Check output:
+  tail -f $(ls -t logs/emb-test-*.out | head -1)
+
+This loads the embedding model BGE-M3:
+  BAAI/bge-m3
+
+BGE-M3 is used to embed legal text/questions for retrieval.
+
+
+## 11. Useful Slurm commands
+
+Show available partitions:
+  sinfo
+
+Show short partition list:
+  sinfo -s
+
+Show your running/pending jobs:
+  squeue -u $USER
+
+Show all jobs on GPU partition:
+  squeue -p gpu
+
+Show detailed info about a job:
+  scontrol show job JOBID
+
+Show finished job accounting:
+  sacct -j JOBID --format=JobID,JobName,Partition,State,ExitCode,Elapsed,AllocTRES,ReqTRES,MaxRSS
+
+Show CPU/memory efficiency if available:
+  seff JOBID
+
+Cancel job:
+  scancel JOBID
+
+
+## 14. Important paths
+
+Shared project:
+  /d/hpc/projects/onj_fri/pad-siew/law-rag
+
+Shared model cache:
+  /d/hpc/projects/onj_fri/pad-siew/law-rag/hf-cache
+
+Private venv:
+  ~/law-rag/venv
+
+Shared ARNES PyTorch container:
+  /d/hpc/singularity/pytorch-24.12-py3.sif
+
+
+## 15. Current working rule
+
+Use shared code/models/data, but private venvs (torej koda je skupna, vsak pa ima svoj venv v ~/law-rag folderju).
+
+Shared:
+  scripts/
+  jobs/
+  data/
+  index/
+  hf-cache/
+
+Private:
+  ~/law-rag/venv
+
+All job files should call Python like this:
+  $HOME/law-rag/venv/bin/python
+
+not:
+  ./venv/bin/python
+  
+Resource usage commands:
+ squeue -u $USER
+ sacct -j JOBID --format=JobID,JobName,Partition,State,ExitCode,Elapsed,AllocTRES,ReqTRES,MaxRSS
+ seff JOBID
+ scontrol show job JOBID
