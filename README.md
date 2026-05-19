@@ -6,6 +6,43 @@ Conversational AI assistant tailored to Slovenian law.
 - all the code is in the "/d/hpc/projects/onj_fri/pad-siew/law-rag" folder
 
 
+
+
+## Current TODO list
+
+Done:
+
+```text
+✅ RAG vs no-RAG
+✅ 2B vs 9B vs 12B
+✅ dense-only vs reranking
+✅ context_n sweep
+✅ 5 prompt variants
+✅ output cleanup
+```
+
+Still worth doing:
+
+```text
+1. Evaluate final P2 220/1200 output quality.
+2. Try MAX_CONTEXT_CHARS/MAX_NEW_TOKENS small sweep if needed.
+3. Query rewriting / expansion.
+4. Embedding comparison: BGE-M3 vs multilingual-e5-large.
+5. Generate article-derived question set from random chunks.
+```
+
+Optional:
+
+```text
+MMR retrieval
+ColBERT
+QwQ-32B qualitative demo
+SloBERT pooled baseline
+```
+
+
+
+
 # WHAT WE DID SO FAR
 ## 1. Initial GaMS-2B setup on ARNES
 - **What we tried:** Set up GaMS-2B-Instruct in the ARNES Slurm environment using the shared PyTorch Singularity/Apptainer container and a private Python venv.
