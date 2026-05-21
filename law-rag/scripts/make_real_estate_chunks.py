@@ -34,6 +34,15 @@ REAL_ESTATE_KEYWORDS = [
     "gradbeno dovoljenje",
     "urejanje prostora",
     "komasacija",
+
+    # Added for better cadastral coverage.
+    "zemljiški kataster",
+    "kataster nepremičnin",
+    "evidentiranje nepremičnin",
+    "evidenca nepremičnin",
+    "geodetska uprava",
+    "katastrska občina",
+    "parcelna številka",
 ]
 
 
@@ -48,7 +57,7 @@ def normalize_text(text: str) -> str:
     # Remove common PISRS warning lines.
     text = re.sub(r"Opozorilo:.*?(?=\n)", "", text, flags=re.IGNORECASE)
 
-    # Fix missing space in headings like "3.2Upravna komasacija"
+    # Fix missing space in headings like "3.2Upravna komasacija".
     text = re.sub(r"(\d+\.\d+)([A-ZČŠŽ])", r"\1 \2", text)
 
     # Normalize spaces but keep newlines for splitting.
@@ -59,7 +68,7 @@ def normalize_text(text: str) -> str:
 
 
 def is_real_estate_law(title: str, text: str = "") -> bool:
-    haystack = f"{title} {text[:3000]}".lower()
+    haystack = f"{title} {text[:5000]}".lower()
     return any(keyword in haystack for keyword in REAL_ESTATE_KEYWORDS)
 
 
@@ -73,7 +82,6 @@ def extract_article_number(article_text: str) -> str:
 
 
 def extract_article_title(article_text: str) -> str:
-    # Matches: 170. člen (vpis pogodbene komasacije)
     match = re.match(
         r"^\s*\d+\.\s*člen\s*\(([^)]+)\)",
         article_text,
@@ -82,18 +90,72 @@ def extract_article_title(article_text: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def split_by_article(text: str) -> list[str]:
+def looks_like_structural_heading(line: str) -> bool:
     """
-    Split by article headings like:
-      170. člen
-      170. člen (title)
+    Detect headings that should not be attached to previous article text.
 
-    Keeps article heading inside each chunk.
+    Examples:
+      X. PREHODNE IN KONČNE DOLOČBE
+      KONČNI DOLOČBI
+      3.2 Upravna komasacija
+      3.2.1 Splošne določbe
+      4. poglavje: PROSTORSKI IZVEDBENI AKTI
+      1. oddelek: Državno prostorsko načrtovanje
     """
+    s = line.strip()
+    if not s:
+        return False
+
+    # Roman numeral headings, usually all-caps.
+    if re.match(r"^[IVXLCDM]+\.\s+[A-ZČŠŽ][A-ZČŠŽ\s\-]+$", s):
+        return True
+
+    # Common final/transitional heading forms.
+    if re.match(r"^(PREHODNE|KONČNE|PREHODNA|KONČNA|KONČNI|KONČNO)\b", s, flags=re.IGNORECASE):
+        return True
+
+    if "PREHODNE IN KONČNE DOLOČBE" in s.upper():
+        return True
+
+    if "KONČNI DOLOČBI" in s.upper() or "KONČNE DOLOČBE" in s.upper():
+        return True
+
+    # Numbered section headings: 3.2 Upravna..., 3.2.1 Splošne...
+    if re.match(r"^\d+(?:\.\d+)+\.?\s+[A-ZČŠŽ]", s):
+        return True
+
+    # Chapter/section headings.
+    if re.match(r"^\d+\.\s*(poglavje|oddelek|podpoglavje)\b", s, flags=re.IGNORECASE):
+        return True
+
+    # All caps short headings.
+    if len(s) <= 80 and s.upper() == s and re.search(r"[A-ZČŠŽ]", s):
+        if not re.match(r"^\d+\.\s*člen\b", s, flags=re.IGNORECASE):
+            return True
+
+    return False
+
+
+def clean_article_part_before_flattening(part: str) -> str:
+    """
+    Remove trailing structural headings from the end of an article chunk
+    before flattening newlines.
+    """
+    lines = [line.strip() for line in part.splitlines()]
+    lines = [line for line in lines if line]
+
+    # Remove trailing heading lines.
+    while lines and looks_like_structural_heading(lines[-1]):
+        lines.pop()
+
+    cleaned = "\n".join(lines).strip()
+    return cleaned
+
+
+def split_by_article(text: str) -> list[str]:
     text = normalize_text(text)
 
-    # Ensure article headings are on their own split boundary where possible.
-    # Then split before lines starting with "number. člen".
+    # Split before lines starting with "number. člen".
     parts = re.split(r"\n(?=\s*\d+\.\s*člen\b)", text, flags=re.IGNORECASE)
 
     chunks = []
@@ -106,11 +168,16 @@ def split_by_article(text: str) -> list[str]:
         if not re.match(r"^\s*\d+\.\s*člen\b", part, flags=re.IGNORECASE):
             continue
 
-        # Flatten newlines after article splitting.
+        # Clean headings BEFORE flattening.
+        part = clean_article_part_before_flattening(part)
+
+        if not part:
+            continue
+
+        # Flatten after cleanup.
         part = part.replace("\n", " ")
         part = re.sub(r"\s+", " ", part).strip()
 
-        # Remove very short false positives.
         if len(part) < 100:
             continue
 

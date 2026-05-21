@@ -10,3 +10,4 @@ tqdm
 pypdf
 beautifulsoup4
 lxml
+sentencepiece
