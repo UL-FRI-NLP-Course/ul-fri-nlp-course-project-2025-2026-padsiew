@@ -2,45 +2,97 @@
 
 Conversational AI assistant for Slovenian law.
 
-## Running on ARNES
+## Project overview
 
-All the code which was used for experiments is available on the ARNES cluster at:
+This project implements a retrieval-augmented generation (RAG) system for Slovenian legal question answering. The system focuses on real-estate and property-law legislation from PISRS/COLESLAW. Legal documents are filtered, split into article-level chunks, embedded with BGE-M3, stored in a FAISS index, retrieved for a user question, and passed to a Slovenian instruction-tuned language model.
+
+The full runnable experiment environment, including cached models, indexes, logs, and large intermediate files, is available on ARNES:
 
 ```text
 /d/hpc/projects/onj_fri/pad-siew/law-rag
-````
-
-The GitHub repository contains the main scripts, evaluation sets, selected outputs, and report files. Large files such as models, data and full logs are not in this repo, but are available on arnes.
-
-### 1. Log in to ARNES
-
-```bash
-ssh <username>@hpc-login4.arnes.si
 ```
 
-### 2. Go to the project directory
+The GitHub repository contains the main scripts, evaluation sets, selected outputs, result tables, and report files. Large raw data, model caches, FAISS indexes, and full logs are not committed.
+
+## Running on ARNES
+
+### 1. Login
+
+From your local machine, replace `USERNAME` with your ARNES username:
+
+```bash
+ssh -i ~/.ssh/id_ed25519_arnes USERNAME@hpc-login3.arnes.si
+```
+
+or:
+
+```bash
+ssh USERNAME@hpc-login4.arnes.si
+```
+
+### 2. Navigate to the shared project folder
 
 ```bash
 cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+ls
 ```
 
-### 3. Start an interactive GPU session
+### 3. Create your private virtual environment
+
+Run this once:
 
 ```bash
-srun --partition=gpu --gpus=1 --cpus-per-task=8 --mem=64G --time=02:00:00 --pty bash
+cd ~
+mkdir -p ~/law-rag
+cd ~/law-rag
+
+apptainer exec /d/hpc/singularity/pytorch-24.12-py3.sif \
+  python -m venv --system-site-packages venv
 ```
 
-### 4. Set cache/environment variables
+### 4. Install project dependencies
+
+Upgrade pip and install dependencies:
+
 
 ```bash
-export HF_HOME=$PWD/hf-cache
-export HF_DATASETS_CACHE=$HF_HOME/datasets
-export TOKENIZERS_PARALLELISM=false
-export NVIDIA_DRIVER_CAPABILITIES=compute,utility
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+apptainer exec \
+  --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+  --bind $HOME:$HOME \
+  --pwd $HOME/law-rag \
+  /d/hpc/singularity/pytorch-24.12-py3.sif \
+  ./venv/bin/pip install --upgrade pip
+
+apptainer exec \
+  --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+  --bind $HOME:$HOME \
+  --pwd $HOME/law-rag \
+  /d/hpc/singularity/pytorch-24.12-py3.sif \
+  ./venv/bin/pip install -r /d/hpc/projects/onj_fri/pad-siew/law-rag/requirements.txt
 ```
 
-If the model is not already cached, log in to HuggingFace:
+### 5. Verify the environment
+
+```bash
+cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+
+apptainer exec \
+  --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+  --bind $HOME:$HOME \
+  --pwd /d/hpc/projects/onj_fri/pad-siew/law-rag \
+  /d/hpc/singularity/pytorch-24.12-py3.sif \
+  $HOME/law-rag/venv/bin/python -c "import torch, transformers, sentence_transformers, faiss; print('OK'); print(torch.__version__); print(transformers.__version__)"
+```
+
+Expected output starts with:
+
+```text
+OK
+```
+
+### 6. HuggingFace login
+
+If the model is not already cached, log in:
 
 ```bash
 hf auth login
@@ -48,11 +100,14 @@ hf auth login
 
 Paste your HuggingFace token when prompted. The model will download automatically when first used.
 
-### 5. Run the law RAG model on one demo question
+## Asking the model a custom question
 
-Create a one-question file:
+The simplest way to ask a custom question is to create a one-question JSONL file and run the final RAG script.
+
+### 1. Create a demo question
 
 ```bash
+cd /d/hpc/projects/onj_fri/pad-siew/law-rag
 mkdir -p data/eval
 
 cat > data/eval/demo_question.jsonl <<'EOF'
@@ -60,7 +115,17 @@ cat > data/eval/demo_question.jsonl <<'EOF'
 EOF
 ```
 
-Run the final dense setup:
+You can replace the question with any Slovenian legal question.
+
+### 2. Start an interactive GPU session
+
+```bash
+srun --partition=gpu --gpus=1 --cpus-per-task=8 --mem=64G --time=01:00:00 --pty bash
+```
+
+(or preferably run as sbatch job)
+
+### 3. Run the RAG setup
 
 ```bash
 apptainer exec --nv \
@@ -68,7 +133,7 @@ apptainer exec --nv \
   --bind $HOME:$HOME \
   --pwd /d/hpc/projects/onj_fri/pad-siew/law-rag \
   /d/hpc/singularity/pytorch-24.12-py3.sif \
-  $HOME/law-rag-gemma3/venv/bin/python -u scripts/rag_eval_dense.py \
+  $HOME/law-rag/venv/bin/python -u scripts/rag_eval_dense.py \
     --questions data/eval/demo_question.jsonl \
     --model cjvt/GaMS3-12B-Instruct \
     --context-n 2 \
@@ -78,13 +143,25 @@ apptainer exec --nv \
     --run-name demo_question
 ```
 
-The answer is saved to:
+### 4. Read the answer
+
+The output is saved in:
 
 ```text
 data/outputs/
 ```
 
-### 6. Run final evaluation with provided test questions
+Find the newest demo output:
+
+```bash
+ls -t data/outputs/*demo_question* | head -1
+cat $(ls -t data/outputs/*demo_question* | head -1)
+```
+
+The JSONL output contains the question, retrieved legal chunks, and generated answer.
+
+
+## Optional evaluation jobs on test questions
 
 Dense RAG:
 
@@ -98,17 +175,21 @@ Hybrid BM25 + dense RAG:
 sbatch jobs/final_rag_hybrid_12b_50q.sbatch
 ```
 
-### Notes
+## Data, dependencies, and reproducibility
 
-GaMS3-12B can take several minutes to load on ARNES. This is expected because the model checkpoint is large and loaded from shared storage. For debugging, use GaMS-2B or a smaller question file.
-
-
-The most important scripts are:
+This repo contains:
 
 ```text
-code/rag/rag_eval_dense.py        Final dense RAG evaluation
-code/rag/rag_eval_hybrid.py       Final hybrid BM25+dense RAG evaluation
-code/rag/build_index.py           FAISS index construction
-code/rag/build_bm25_index.py      BM25 index construction
-code/rag/experiments/             Ablation and retrieval experiments
+code/rag/              Main scripts
+code/rag/experiments/  Experiment scripts
+data/eval/             Evaluation datasets
+results/               Selected outputs and summary tables
+report/                Final report and figures
+requirements.txt       Python dependencies
+```
+
+The project uses the PISRS part of COLESLAW. The raw corpus and large derived files are not committed to GitHub because of size. The prepared filtered chunk file, FAISS indexes, BM25 index, model caches, full logs, and full outputs are available on ARNES in the folder:
+
+```text
+/d/hpc/projects/onj_fri/pad-siew/law-rag
 ```

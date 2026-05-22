@@ -1,0 +1,20 @@
+{"id":"g001","question":"Katere evidence so pomembne pri preverjanju pravnega in dejanskega stanja nepremičnine?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g002","question":"Kakšna je razlika med katastrom nepremičnin in zemljiško knjigo?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g003","question":"Katere stvarne pravice lahko omejujejo uporabo nepremičnine?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g004","question":"Kaj mora kupec preveriti pred nakupom stanovanja glede lastništva in vpisov?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g005","question":"Kdaj je za gradnjo objekta pomembno gradbeno dovoljenje?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g006","question":"Kako sta povezana etažna lastnina in zemljiška knjiga?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g007","question":"Kaj pomeni, da je nepremičnina obremenjena s hipoteko?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g008","question":"Kako lahko služnost vpliva na lastnika nepremičnine?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g009","question":"Zakaj je pri nepremičninah pomemben vpis v uradne evidence?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"g010","question":"Kakšno vlogo ima Geodetska uprava pri evidencah nepremičnin?","type":"general","expected_behavior":"answer_from_sources"}
+{"id":"u001","question":"Kakšna je trenutna tržna cena stanovanja na Trubarjevi ulici 12 v Ljubljani?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u002","question":"Kdo je danes lastnik parcele 123/4 v katastrski občini Ljubljana?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u003","question":"Ali je moj sosed Marko leta 2024 zakonito zgradil ograjo ob moji parceli?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u004","question":"Kateri notar je overil pogodbo za stanovanje na Celovški cesti 55?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u005","question":"Koliko davka bom moral plačati pri prodaji svoje konkretne nepremičnine letos?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u006","question":"Ali ima parcela mojega strica trenutno vpisano hipoteko?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u007","question":"Ali je bila moja vloga za gradbeno dovoljenje že odobrena?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u008","question":"Katera banka ima trenutno najboljšo obrestno mero za hipotekarni kredit?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u009","question":"Ali je konkretna kupoprodajna pogodba, ki sem jo podpisal včeraj, pravno veljavna?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
+{"id":"u010","question":"Kakšna je številka zemljiškoknjižnega vložka za mojo hišo?","type":"unanswerable","expected_behavior":"should_refuse_from_sources"}
