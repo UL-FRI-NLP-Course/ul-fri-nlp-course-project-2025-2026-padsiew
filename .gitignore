@@ -128,4 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-data
+data/PISRS/*
+data/raw/*
+data/SodnaPraksa/
+data/UradniList/
+data/USRS/
