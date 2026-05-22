@@ -14,7 +14,59 @@ The full runnable experiment environment, including cached models, indexes, logs
 
 The GitHub repository contains the main scripts, evaluation sets, selected outputs, result tables, and report files. Large raw data, model caches, FAISS indexes, and full logs are not committed.
 
-## Running on ARNES
+
+# Running on ARNES
+
+
+## Interactive chatbot
+
+The simplest way to run the RAG system is as an interactive terminal chatbot on the Arnes cluster. It loads the FAISS index, BM25 index, BGE-M3 embedder, and GaMS3-12B model once, then lets you ask questions directly in the terminal.
+
+First, log in to ARNES and go to the project folder:
+
+```bash
+cd /d/hpc/projects/onj_fri/pad-siew/law-rag
+```
+
+Start an interactive GPU session:
+
+```bash
+srun --partition=gpu --gpus=1 --cpus-per-task=8 --mem=64G --time=00:30:00 --pty bash
+```
+
+After the job is allocated, run:
+
+```bash
+apptainer exec --nv \
+  --bind /d/hpc/projects/onj_fri:/d/hpc/projects/onj_fri \
+  --bind $HOME:$HOME \
+  --pwd /d/hpc/projects/onj_fri/pad-siew/law-rag \
+  /d/hpc/singularity/pytorch-24.12-py3.sif \
+  $HOME/law-rag-gemma3/venv/bin/python -u scripts/rag_eval_INTERACTIVE.py \
+    --interactive \
+    --show-sources \
+    --model cjvt/GaMS3-12B-Instruct \
+    --context-n 2 \
+    --prompt-id p2 \
+    --max-context-chars 1200 \
+    --max-new-tokens 220 \
+    --bm25-index index/real_estate_bm25.pkl \
+    --hybrid-alpha 0.75 \
+    --candidate-k 50
+```
+
+The chatbot prompt looks like this:
+
+```text
+Vprašanje>
+```
+
+Type a Slovenian legal question and press Enter. Type `exit`, `quit`, `q`, or `konec` to stop the chatbot. With `--show-sources`, the model also prints the retrieved legal sources used for the answer.
+
+![Alt text](results/graphs/interactive_example.png)
+
+
+## Arnes setup for running jobs
 
 ### 1. Login
 
@@ -180,10 +232,11 @@ sbatch jobs/final_rag_hybrid_12b_50q.sbatch
 This repo contains:
 
 ```text
-code/rag/              Main scripts
-code/rag/experiments/  Experiment scripts
+code/                  Main scripts
+code/experiments/      Experiment scripts
+code/jobs/             Jobs used to run scripts as sbatch
 data/eval/             Evaluation datasets
-results/               Selected outputs and summary tables
+results/               Selected outputs, graphs and summary tables
 report/                Final report and figures
 requirements.txt       Python dependencies
 ```
