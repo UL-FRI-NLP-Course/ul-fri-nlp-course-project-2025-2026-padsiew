@@ -1,4 +1,4 @@
-# Natural language processing course: AIPravnik.si
+# Natural language processing course: A RAG-Based Slovenian Legal Assistant for Real-Estate Law
 
 Conversational AI assistant for Slovenian law.
 
